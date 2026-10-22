@@ -9,7 +9,7 @@
 require_once 'config.php';
 require_once __DIR__ . '/_perm_silmara.php';
 
-// ── Auth pra API: NÃO redireciona pra login (isso quebra AJAX),
+// ─ Auth pra API: NÃO redireciona pra login (isso quebra AJAX),
 // retorna JSON 401 pra o frontend tratar (ex: avisar usuário + reload) ──
 header('Content-Type: application/json; charset=utf-8');
 if (empty($_SESSION['user_id'])) {
