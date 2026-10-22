@@ -2,8 +2,8 @@
 
 Sistema interno da área de Benefícios da **Interweg Seguros**, usado para controlar demandas, cotações, faturamento, sinistralidade, ações de saúde e o relacionamento com os clientes corporativos.
 
-Produção: https://interweg-beneficios.com.br
-Homologação: https://homolog.interweg-beneficios.com.br
+- Produção: https://interweg-beneficios.com.br
+- Homologação: https://homolog.interweg-beneficios.com.br
 
 ## Tecnologias
 
