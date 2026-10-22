@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// PERFIL.JS — Edição do próprio usuário
+// PERFIL.JS - Edição do próprio usuário
 // ═══════════════════════════════════════════════════════════════
 
 window.USER_ID = (typeof USER_ID !== 'undefined') ? USER_ID : 0;
