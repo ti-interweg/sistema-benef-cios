@@ -1,0 +1,1 @@
+<?php return 'COLOQUE_SUA_CHAVE_ANTHROPIC';

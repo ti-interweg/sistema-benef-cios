@@ -1,0 +1,65 @@
+RewriteEngine On
+
+# =====================================================================
+#  SEGURANÇA — não altera o funcionamento das páginas
+# =====================================================================
+
+# Desliga listagem de diretórios
+Options -Indexes
+
+# Cabeçalhos de segurança (só se o módulo existir)
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Bloqueia acesso DIRETO por URL a arquivos de configuração/segredo.
+# (O PHP continua usando via require internamente — não quebra.)
+<FilesMatch "(?i)^(config|db|mail_smtp|chave_ia)\.php$">
+  Require all denied
+</FilesMatch>
+
+# Segredos em texto
+<FilesMatch "(?i)^(smtp_senha|smtp_usuario)\.txt$">
+  Require all denied
+</FilesMatch>
+
+# Arquivos auxiliares que não devem ser servidos
+<FilesMatch "(?i)\.(sql|log|md|bak|ini|env|sh)$">
+  Require all denied
+</FilesMatch>
+
+# Scripts de debug/reset/diagnóstico (o ideal é REMOVÊ-LOS do servidor)
+<FilesMatch "(?i)^(gerar_hash|teste|diag_smtp|_debug_login_ingridh|redefinir_senhas|reset_senhas_enfermeiras|backfill_datas_faturamento|_perm_silmara)\.php$">
+  Require all denied
+</FilesMatch>
+
+# =====================================================================
+#  REWRITES (seu conteúdo original — inalterado)
+# =====================================================================
+
+# Raiz vira index.php internamente
+DirectoryIndex index.php
+
+# Portal do cliente: URLs amigáveis → demandas_mercantil.php
+RewriteRule ^demandas-mercantil/?$ demandas_mercantil.php [L,QSA]
+RewriteRule ^portal/?$ demandas_mercantil.php [L,QSA]
+
+# 1) Redireciona /foo.php → /foo  (limpa a URL pro usuário)
+#    Só pra GET (pra não quebrar POSTs do api.php).
+RewriteCond %{REQUEST_URI} !^/api\.php
+RewriteCond %{REQUEST_URI} !^/cron\.php
+RewriteCond %{REQUEST_URI} !^/setup\.php
+RewriteCond %{THE_REQUEST} ^GET\s/+([^\s?]+)\.php([\s?]) [NC]
+RewriteRule ^ /%1 [L,R=301,QSA]
+
+# 2) Direciona /foo → /foo.php internamente (sem mostrar pro usuário)
+#    Só se /foo não for um arquivo ou diretório real.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^\.]+)$ $1.php [L]
+
+# 3) Compatibilidade: /index.php → / (mantém o comportamento antigo)
+RewriteCond %{THE_REQUEST} /index\.php [NC]
+RewriteRule ^index\.php$ / [L,R=301]

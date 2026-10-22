@@ -1,0 +1,49 @@
+# =========================================================
+# .gitignore - Sistema Interweg Beneficios
+# =========================================================
+
+# ---- Segredos (use config.example.php e chave_ia.example.php como modelo)
+config.php
+chave_ia.php
+smtp_senha.txt
+smtp_usuario.txt
+.env
+.env.*
+*.pem
+*.key
+
+# ---- Ambiente de homologacao (copia com senhas e dados reais)
+homolog/
+
+# ---- Backups e versoes antigas
+backup/
+*.bak
+*.bak*
+*.old
+*.old.php
+*.before_*
+*.placeholder*
+
+# ---- Logs, dumps e scripts de banco
+*.log
+*.sql
+*.zip
+*.rar
+
+# ---- Arquivos enviados pelos usuarios
+uploads/*
+!uploads/.htaccess
+
+# ---- Planilhas de dados reais (exportacoes)
+faturamentos_*.xlsx
+
+# ---- Dependencias
+node_modules/
+vendor/
+
+# ---- Sistema operacional e editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,8 @@
+# uploads/ — arquivos enviados pelos usuários.
+# Nenhum script pode ser executado aqui (proteção contra upload malicioso).
+
+Options -Indexes
+
+<FilesMatch "(?i)\.(php|php3|php4|php5|php7|php8|phtml|phps|phar|pl|py|jsp|asp|aspx|cgi|sh|exe)$">
+  Require all denied
+</FilesMatch>
