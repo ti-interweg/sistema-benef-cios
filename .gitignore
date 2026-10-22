@@ -47,3 +47,7 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# ---- Gerado pelo deploy
+versao.txt
+.ftp-deploy-sync-state.json

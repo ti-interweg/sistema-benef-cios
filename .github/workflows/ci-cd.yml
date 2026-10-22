@@ -1,0 +1,193 @@
+# =========================================================
+# CI/CD - Sistema Interweg Beneficios -> Hostinger
+#
+# Fluxo:
+#   Pull Request ............ CI (validacoes)
+#   push na branch homolog .. CI + deploy em HOMOLOGACAO
+#   push na branch main ..... CI + deploy em PRODUCAO
+#   Actions > Run workflow .. deploy manual (escolhe o ambiente)
+#
+# Dois sites separados na Hostinger, cada um com sua conta FTP.
+#
+# Secrets (Settings > Secrets and variables > Actions > Secrets):
+#   FTP_SERVER_PROD / FTP_USERNAME_PROD / FTP_PASSWORD_PROD
+#       -> site interweg-beneficios.com.br
+#   FTP_SERVER_HOMOLOG / FTP_USERNAME_HOMOLOG / FTP_PASSWORD_HOMOLOG
+#       -> site homolog.interweg-beneficios.com.br
+#
+# Variables (mesma tela, aba Variables):
+#   FTP_DIR_PROD     pasta do site no FTP de producao     ex.: public_html/
+#   FTP_DIR_HOMOLOG  pasta do site no FTP de homologacao  ex.: public_html/
+#   SITE_URL_PROD    ex.: https://interweg-beneficios.com.br
+#   SITE_URL_HOMOLOG ex.: https://homolog.interweg-beneficios.com.br
+# =========================================================
+
+name: CI/CD Hostinger
+
+on:
+  pull_request:
+    branches: [main, homolog]
+  push:
+    branches: [main, homolog]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: "Ambiente para publicar"
+        required: true
+        default: homolog
+        type: choice
+        options: [homolog, producao]
+
+# Nunca rodar dois deploys ao mesmo tempo no mesmo ambiente
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------------------------------------
+  # CI: validacoes antes de qualquer publicacao
+  # -------------------------------------------------------
+  ci:
+    name: CI (lint e seguranca)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: none
+
+      - name: Lint PHP (erros de sintaxe)
+        run: |
+          set -e
+          erros=0
+          while IFS= read -r -d '' f; do
+            php -l "$f" > /dev/null || erros=1
+          done < <(git ls-files -z '*.php')
+          if [ "$erros" -ne 0 ]; then echo "::error::Erro de sintaxe PHP"; exit 1; fi
+          echo "PHP OK"
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Lint JavaScript (erros de sintaxe)
+        run: |
+          set -e
+          erros=0
+          while IFS= read -r -d '' f; do
+            node --check "$f" || erros=1
+          done < <(git ls-files -z '*.js' ':!:package-lock.json')
+          if [ "$erros" -ne 0 ]; then echo "::error::Erro de sintaxe JS"; exit 1; fi
+          echo "JS OK"
+
+      - name: Bloquear arquivos de segredo versionados
+        run: |
+          proibidos=$(git ls-files | grep -E '(^|/)(config\.php|chave_ia\.php|smtp_senha\.txt|smtp_usuario\.txt|\.env)$|^homolog/|^backup/|\.(sql|log|bak)$' || true)
+          if [ -n "$proibidos" ]; then
+            echo "::error::Arquivos que nao podem estar no repositorio:"
+            echo "$proibidos"
+            exit 1
+          fi
+          echo "Nenhum arquivo proibido"
+
+      - name: Procurar chaves e senhas no codigo
+        run: |
+          achados=$(git grep -n -I -E 'sk-ant-api[0-9]{2}-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|Interweg[0-9]{3,4}@' -- . ':!:.github/' || true)
+          if [ -n "$achados" ]; then
+            echo "::error::Possivel segredo encontrado no codigo:"
+            echo "$achados" | sed -E 's/(sk-ant-api[0-9]{2}-.{6}).*/\1***/'
+            exit 1
+          fi
+          echo "Nenhum segredo encontrado"
+
+  # -------------------------------------------------------
+  # CD: deploy via FTP na Hostinger
+  # Envia so o que mudou (controle pelo arquivo
+  # .ftp-deploy-sync-state.json no servidor).
+  # Arquivos que existem so no servidor (config.php,
+  # chave_ia.php, uploads, homolog/) NAO sao apagados.
+  # -------------------------------------------------------
+  deploy:
+    name: Deploy Hostinger
+    needs: ci
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Definir ambiente
+        id: alvo
+        run: |
+          if { [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.ambiente }}" = "producao" ]; } || \
+             { [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; }; then
+            echo "nome=producao" >> "$GITHUB_OUTPUT"
+            echo "dir=${{ vars.FTP_DIR_PROD }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ vars.SITE_URL_PROD }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "nome=homolog" >> "$GITHUB_OUTPUT"
+            echo "dir=${{ vars.FTP_DIR_HOMOLOG }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ vars.SITE_URL_HOMOLOG }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Conferir configuracao
+        run: |
+          if [ -z "${{ steps.alvo.outputs.dir }}" ]; then
+            echo "::error::Variavel da pasta FTP nao configurada para ${{ steps.alvo.outputs.nome }}"
+            exit 1
+          fi
+          echo "Publicando em: ${{ steps.alvo.outputs.nome }} -> ${{ steps.alvo.outputs.dir }}"
+
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+
+      - name: Gravar versao publicada
+        run: |
+          echo "commit=${GITHUB_SHA}" > versao.txt
+          echo "data=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> versao.txt
+          echo "ambiente=${{ steps.alvo.outputs.nome }}" >> versao.txt
+
+      - name: Enviar para Hostinger (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ steps.alvo.outputs.nome == 'producao' && secrets.FTP_SERVER_PROD || secrets.FTP_SERVER_HOMOLOG }}
+          username: ${{ steps.alvo.outputs.nome == 'producao' && secrets.FTP_USERNAME_PROD || secrets.FTP_USERNAME_HOMOLOG }}
+          password: ${{ steps.alvo.outputs.nome == 'producao' && secrets.FTP_PASSWORD_PROD || secrets.FTP_PASSWORD_HOMOLOG }}
+          protocol: ftps
+          port: 21
+          server-dir: ${{ steps.alvo.outputs.dir }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            **/node_modules/**
+            homolog/**
+            backup/**
+            config.php
+            chave_ia.php
+            config.example.php
+            chave_ia.example.php
+            mail_smtp.php
+            importar.php
+            smtp_senha.txt
+            smtp_usuario.txt
+            **/*.md
+            package.json
+            package-lock.json
+            gerar_doc_ajustes.js
+
+      - name: Verificar se o site responde
+        if: steps.alvo.outputs.url != ''
+        run: |
+          sleep 5
+          code=$(curl -s -o /dev/null -w "%{http_code}" -L "${{ steps.alvo.outputs.url }}/login")
+          echo "HTTP $code"
+          if [ "$code" -ge 500 ] || [ "$code" = "000" ]; then
+            echo "::error::Site respondeu com erro ($code) depois do deploy"
+            exit 1
+          fi
