@@ -9,11 +9,6 @@ require_once __DIR__.'/config.php';
 header('Content-Type: application/json; charset=utf-8');
 if (empty($_SESSION['user_id'])) { http_response_code(401); echo json_encode(['erro'=>'Não autenticado']); exit; }
 
-/* === CHAVE DA API ANTHROPIC ===========================================
-   Opção A (recomendada): crie o arquivo  chave_ia.php  na mesma pasta com:
-       <?php return 'sk-ant-aqui-sua-chave';
-   Opção B: cole a chave direto na linha abaixo (entre as aspas).
-   ===================================================================== */
 $ANTHROPIC_API_KEY = '';
 if (is_file(__DIR__.'/chave_ia.php')) { $ANTHROPIC_API_KEY = trim((string) require __DIR__.'/chave_ia.php'); }
 if ($ANTHROPIC_API_KEY === '') { $ANTHROPIC_API_KEY = getenv('ANTHROPIC_API_KEY') ?: ''; }
