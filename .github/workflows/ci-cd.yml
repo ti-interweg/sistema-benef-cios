@@ -127,11 +127,11 @@ jobs:
           if { [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.ambiente }}" = "producao" ]; } || \
              { [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; }; then
             echo "nome=producao" >> "$GITHUB_OUTPUT"
-            echo "dir=${{ vars.FTP_DIR_PROD }}" >> "$GITHUB_OUTPUT"
+            echo "dir=${{ vars.FTP_DIR_PROD || secrets.FTP_DIR_PROD }}" >> "$GITHUB_OUTPUT"
             echo "url=${{ vars.SITE_URL_PROD }}" >> "$GITHUB_OUTPUT"
           else
             echo "nome=homolog" >> "$GITHUB_OUTPUT"
-            echo "dir=${{ vars.FTP_DIR_HOMOLOG }}" >> "$GITHUB_OUTPUT"
+            echo "dir=${{ vars.FTP_DIR_HOMOLOG || secrets.FTP_DIR_HOMOLOG }}" >> "$GITHUB_OUTPUT"
             echo "url=${{ vars.SITE_URL_HOMOLOG }}" >> "$GITHUB_OUTPUT"
           fi
 
