@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// IA / BI — leitura por IA de visão e análise de BI
+// IA / BI - leitura por IA de visão e análise de BI
 // (separado do sinistralidade.js para não estourar o tamanho do arquivo)
 // ═══════════════════════════════════════════════════════════════
 
