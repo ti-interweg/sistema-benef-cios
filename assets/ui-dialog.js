@@ -1,4 +1,4 @@
-/* Diálogos modernos (alert / confirm / prompt) — global em todas as páginas.
+/* Diálogos modernos (alert / confirm / prompt) - global em todas as páginas.
    Substituem os popups nativos do navegador por modais estilizados.
    Uso:
      await uiAlert('mensagem'[, 'Título']);
